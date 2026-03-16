@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Downloads | Jogos & Apps</title>
+<style>
+    /* Fonte moderna e tech */
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap');
+
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+    }
+
+    body {
+        font-family: 'Montserrat', sans-serif;
+        background-color: #050505;
+        /* Gradiente azul profundo no fundo */
+        background-image: radial-gradient(circle at top, #001a33 0%, #050505 70%);
+        color: #ffffff;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 20px;
+    }
+
+    .container {
+        width: 100%;
+        max-width: 450px;
+        background: rgba(10, 10, 10, 0.85);
+        padding: 40px 20px;
+        border-radius: 24px;
+        border: 1px solid #003366;
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.9);
+        text-align: center;
+        backdrop-filter: blur(12px);
+    }
+
+    .profile-img {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        border: 4px solid #00a2ff;
+        object-fit: cover;
+        margin-bottom: 20px;
+        box-shadow: 0 0 20px rgba(0, 162, 255, 0.3);
+    }
+
+    h1 {
+        font-size: 28px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: #00a2ff;
+        text-shadow: 2px 2px 10px rgba(0, 162, 255, 0.4);
+    }
+
+    .subtitle {
+        color: #888;
+        margin-bottom: 30px;
+        font-size: 14px;
+        text-transform: uppercase;
+    }
+
+    /* Estilização das Seções */
+    .section-title {
+        text-align: left;
+        font-size: 13px;
+        color: #00a2ff;
+        margin: 20px 0 10px 5px;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        border-left: 3px solid #00a2ff;
+        padding-left: 10px;
+    }
+
+    .links-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    /* Estilo do botão de Arquivo/Download */
+    .btn-file {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: rgba(255, 255, 255, 0.05);
+        padding: 14px 20px;
+        border-radius: 12px;
+        color: white;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 15px;
+        transition: all 0.3s ease;
+        border: 1px solid rgba(0, 162, 255, 0.2);
+    }
+
+    .btn-file:hover {
+        background: rgba(0, 162, 255, 0.15);
+        border-color: #00a2ff;
+        transform: translateX(5px);
+    }
+
+    .icon-dl {
+        background: #00a2ff;
+        color: #000;
+        padding: 5px 10px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 900;
+    }
+
+    .footer {
+        margin-top: 40px;
+        font-size: 11px;
+        color: #444;
+        letter-spacing: 2px;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <img class="profile-img" src="SUA_IMAGEM_AQUI.jpg" alt="Perfil">
+
+    <h1>MEU HUB</h1>
+    <p class="subtitle">Downloads e Redes Sociais</p>
+
+    <div class="links-container">
+        
+        <div class="section-title">🕹️ Jogos</div>
+        <a href="arquivo_jogo_1.zip" class="btn-file" download>
+            Jogo Exemplo 01 <span class="icon-dl">ZIP</span>
+        </a>
+        <a href="arquivo_jogo_2.exe" class="btn-file" download>
+            Jogo Exemplo 02 <span class="icon-dl">EXE</span>
+        </a>
+
+        <div class="section-title">📱 Aplicativos</div>
+        <a href="app_v1.apk" class="btn-file" download>
+            App Premium <span class="icon-dl">APK</span>
+        </a>
+        <a href="ferramenta.rar" class="btn-file" download>
+            Ferramenta Útil <span class="icon-dl">RAR</span>
+        </a>
+
+        <div class="section-title">🌐 Redes Sociais</div>
+        <a href="https://instagram.com/seu_user" target="_blank" class="btn-file">
+            Instagram <span class="icon-dl" style="background:#fff">LINK</span>
+        </a>
+        <a href="https://wa.me/seunumeroaqui" target="_blank" class="btn-file">
+            WhatsApp <span class="icon-dl" style="background:#fff">LINK</span>
+        </a>
+
+    </div>
+
+    <div class="footer">
+        © 2026 DESENVOLVIDO POR VOCÊ
+    </div>
+</div>
+
+</body>
+  </html>
+
