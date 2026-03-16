@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Colheita de Maçãs com Loja e Músicas</title>
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden;
+            background-color: #87CEEB; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none; /* Impede o scroll no celular */
+        }
+        #gameCanvas { display: block; }
+
+        /* --- HUD --- */
+        #hud {
+            position: absolute; top: 10px; left: 10px; right: 10px; display: flex;
+            justify-content: space-between; align-items: center; font-size: 18px;
+            font-weight: bold; color: #2C3E50; z-index: 5; pointer-events: none;
+        }
+        #hudLeft { pointer-events: auto; }
+        #hudRight { pointer-events: auto; display: flex; gap: 8px; }
+        #hud span {
+            background-color: rgba(255, 255, 255, 0.8); padding: 5px 10px;
+            border-radius: 10px; margin-right: 5px; display: inline-block;
+        }
+        .hud-btn {
+            background-color: rgba(255, 255, 255, 0.9); border: 2px solid #bdc3c7;
+            border-radius: 10px; padding: 5px 10px; font-size: 16px; cursor: pointer;
+            font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* --- Botões de Habilidades (In-Game) --- */
+        #abilitiesContainer {
+            position: absolute; bottom: 30px; right: 20px; display: flex;
+            flex-direction: column; gap: 15px; z-index: 4;
+        }
+        .ability-btn {
+            color: white; border: 2px solid #2980b9; border-radius: 50%;
+            width: 65px; height: 65px; font-size: 14px; font-weight: bold;
+            cursor: pointer; display: none; /* Escondido até comprar */
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); transition: transform 0.1s;
+        }
+        .ability-btn:active { transform: scale(0.90); }
+        .ability-btn.btn-slow { background-color: #9b59b6; border-color: #8e44ad; }
+        .ability-btn.btn-basket { background-color: #e67e22; border-color: #d35400; }
+
+        /* --- Overlay de Contagem Regressiva --- */
+        #countdownOverlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); color: white; font-size: 120px;
+            font-weight: bold; display: none; justify-content: center;
+            align-items: center; z-index: 20; text-shadow: 2px 2px 10px rgba(0,0,0,0.5);
+        }
+
+        /* --- Interface do Menu / Loja --- */
+        #ui {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; justify-content: center;
+            align-items: center; background-color: rgba(255, 255, 255, 0.95); z-index: 10;
+        }
+        h1 { color: #E74C3C; margin-bottom: 5px; font-size: 32px; text-align: center; }
+        p { color: #34495E; font-size: 16px; text-align: center; margin-bottom: 15px; padding: 0 20px; }
+        button.start-btn {
+            padding: 12px 30px; font-size: 18px; font-weight: bold; color: white;
+            background-color: #2ECC71; border: none; border-radius: 20px;
+            cursor: pointer; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        #shop {
+            display: flex; flex-direction: column; gap: 10px; width: 85%;
+            max-width: 320px; background: #fdfdfd; padding: 15px;
+            border-radius: 15px; border: 2px solid #ddd;
+        }
+        .shop-item {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #ecf0f1; padding: 10px 12px; border-radius: 10px;
+        }
+        .shop-item button {
+            margin: 0; padding: 6px 12px; font-size: 14px; font-weight: bold;
+            background-color: #f39c12; color: white; border: none;
+            border-radius: 8px; cursor: pointer;
+        }
+        .shop-item button:disabled { background-color: #95a5a6; cursor: not-allowed; }
+        .item-info { display: flex; flex-direction: column; }
+        .item-name { font-size: 15px; font-weight: bold; color: #2c3e50; }
+        .item-cost { font-size: 13px; color: #e67e22; font-weight: bold; }
+        #statsDisplay { margin-bottom: 15px; font-size: 18px; font-weight: bold; color: #8e44ad; }
+        #musicWarning { font-size: 12px; color: #7f8c8d; margin-top: 10px; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <div id="hud">
+        <div id="hudLeft">
+            <span id="scoreDisplay">Pontos: 0</span>
+            <span id="coinsDisplay">🪙 0</span>
+        </div>
+        <div id="hudRight">
+            <button id="btnPause" class="hud-btn" onclick="togglePause()">⏸️ Loja</button>
+            <button id="btnMute" class="hud-btn" onclick="toggleMute()">🎵</button>
+        </div>
+    </div>
+
+    <div id="abilitiesContainer">
+        <button id="btnUseSlowMo" class="ability-btn btn-slow" onclick="useSlowMo()">⏱️ Slow</button>
+        <button id="btnUseBasket" class="ability-btn btn-basket" onclick="useBasket()">🧺 Cesta</button>
+    </div>
+
+    <div id="countdownOverlay">3</div>
+
+    <div id="ui">
+        <h1 id="uiTitle">Colheita de Maçãs</h1>
+        <p id="uiDesc">Arraste a cesta para pegar as maçãs!</p>
+        <div id="statsDisplay">Recorde: 0 | Moedas: 0</div>
+        <button id="startBtn" class="start-btn">Jogar</button>
+
+        <div id="shop">
+            <div style="text-align: center; font-weight: bold; margin-bottom: 5px; color:#2c3e50;">Loja de Power-Ups</div>
+            <div class="shop-item">
+                <div class="item-info">
+                    <span class="item-name">Cesta Maior (10s)</span>
+                    <span class="item-cost">🪙 100</span>
+                </div>
+                <button id="btnBuyBasket" onclick="buyPowerUp('basket')">Comprar</button>
+            </div>
+            <div class="shop-item">
+                <div class="item-info">
+                    <span class="item-name">Maçãs 2x (Run)</span>
+                    <span class="item-cost">🪙 250</span>
+                </div>
+                <button id="btnBuyDouble" onclick="buyPowerUp('double')">Comprar</button>
+            </div>
+            <div class="shop-item">
+                <div class="item-info">
+                    <span class="item-name">Slow Motion (5s)</span>
+                    <span class="item-cost">🪙 75</span>
+                </div>
+                <button id="btnBuySlowMo" onclick="buyPowerUp('slowmo')">Comprar</button>
+            </div>
+        </div>
+        <p id="musicWarning">Clique em qualquer lugar para liberar o áudio.</p>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        // --- 1. CONFIGURAÇÕES E VARIÁVEIS GERAIS ---
+        const PRECOS = { basket: 100, double: 250, slowmo: 75 };
+        let inventory = { basket: false, double: false, slowmo: false };
+        let isPaused = false;
+        let isMuted = false;
+
+        // --- 2. CONFIGURAÇÃO DOS ÁUDIOS ---
+        const URL_LOBBY = 'https://github.com/kauanunes171220-alt/apple-champions/raw/refs/heads/main/a5.mp3';
+        const URLS_INGAME = [
+            'https://github.com/kauanunes171220-alt/apple-champions/raw/refs/heads/main/jvke%20her.mp3',
+            'https://github.com/kauanunes171220-alt/apple-champions/raw/refs/heads/main/a1.mp3', 
+            'https://github.com/kauanunes171220-alt/apple-champions/raw/refs/heads/main/a2.mp3',
+            'https://github.com/kauanunes171220-alt/apple-champions/raw/refs/heads/main/a3.mp3',
+            'https://github.com/kauanunes171220-alt/apple-champions/raw/refs/heads/main/a6.mp3'
+        ];
+        const somLobby = new Audio(URL_LOBBY); somLobby.loop = true; somLobby.volume = 0.5;
+        const audiosInGame = URLS_INGAME.map(url => { let a = new Audio(url); a.volume = 0.5; return a; });
+        const somColeta = new Audio('https://github.com/kauanunes171220-alt/apple-champions/raw/refs/heads/main/a4.mp3');
+        const somGameOver = new Audio('https://actions.google.com/sounds/v1/foley/wood_plank_flick.ogg');
+
+        let trackInGameAtual = 0;
+        function tocarProximaTrackInGame() {
+            if (!gameRunning || isPaused) return; 
+            audiosInGame[trackInGameAtual].pause(); audiosInGame[trackInGameAtual].currentTime = 0;
+            trackInGameAtual = (trackInGameAtual + 1) % audiosInGame.length;
+            audiosInGame[trackInGameAtual].play().catch(() => {});
+        }
+        audiosInGame.forEach(audio => { audio.addEventListener('ended', tocarProximaTrackInGame); });
+
+        function iniciarMusicaLobby() {
+            audiosInGame.forEach(a => { a.pause(); a.currentTime = 0; });
+            if (!isMuted) somLobby.play().catch(() => {});
+        }
+        function iniciarMusicaJogo() {
+            somLobby.pause(); somLobby.currentTime = 0;
+            if (!isMuted) audiosInGame[trackInGameAtual].play().catch(() => {});
+        }
+
+        document.body.addEventListener('click', () => {
+            if (!gameRunning && somLobby.paused && !isMuted) {
+                iniciarMusicaLobby(); document.getElementById('musicWarning').style.display = 'none';
+            }
+        }, { once: true });
+
+        window.toggleMute = function() {
+            isMuted = !isMuted;
+            document.getElementById('btnMute').innerText = isMuted ? '🔇' : '🎵';
+            somLobby.muted = isMuted; audiosInGame.forEach(a => a.muted = isMuted);
+            somColeta.muted = isMuted; somGameOver.muted = isMuted;
+        };
+
+        // --- CONFIGURAÇÕES DO JOGO ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const ui = document.getElementById('ui');
+        const startBtn = document.getElementById('startBtn');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const coinsDisplay = document.getElementById('coinsDisplay');
+        const statsDisplay = document.getElementById('statsDisplay');
+        const uiTitle = document.getElementById('uiTitle');
+        const uiDesc = document.getElementById('uiDesc');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let coins = parseInt(localStorage.getItem('appleCoins')) || 0;
+        let highScore = parseInt(localStorage.getItem('appleHighScore')) || 0;
+        function saveData() { localStorage.setItem('appleCoins', coins); localStorage.setItem('appleHighScore', highScore); }
+
+        let score = 0, gameRunning = false, animationId;
+        const basketBaseWidth = 90;
+        const basket = { width: basketBaseWidth, height: 30, x: canvas.width / 2 - 45, y: canvas.height - 60, color: '#D35400' };
+
+        let apples = [], appleSpawnTimer = 0, appleSpawnRate = 60, appleSpeed = 3;
+        let activeDouble = false, timerBasket = 0, timerSlowMo = 0;
+        let basketBounce = 0; // Controla o "pulo" da cesta
+        let particles = []; // Controla as partículas visuais
+
+        // --- SISTEMA DE UI E LOJA ---
+        function updateUI() {
+            statsDisplay.innerText = `Recorde: ${highScore} | Moedas: 🪙 ${coins}`;
+            scoreDisplay.innerText = `Pontos: ${score}`;
+            
+            // Se o 2x estiver ativo, mostra em amarelo no texto de moedas!
+            if (activeDouble) {
+                coinsDisplay.innerHTML = `🪙 ${coins} <b style="color: #f39c12;">(2x)</b>`;
+            } else {
+                coinsDisplay.innerText = `🪙 ${coins}`;
+            }
+
+            // Atualiza botões da loja
+            document.getElementById('btnBuyBasket').innerText = inventory.basket || timerBasket > 0 ? "Equipado" : "Comprar";
+            document.getElementById('btnBuyBasket').disabled = inventory.basket || timerBasket > 0 || coins < PRECOS.basket;
+
+            document.getElementById('btnBuyDouble').innerText = activeDouble ? "Equipado" : "Comprar";
+            document.getElementById('btnBuyDouble').disabled = activeDouble || coins < PRECOS.double;
+
+            document.getElementById('btnBuySlowMo').innerText = inventory.slowmo || timerSlowMo > 0 ? "Equipado" : "Comprar";
+            document.getElementById('btnBuySlowMo').disabled = inventory.slowmo || timerSlowMo > 0 || coins < PRECOS.slowmo;
+
+            // Mostra ou esconde botões in-game
+            document.getElementById('btnUseBasket').style.display = inventory.basket ? 'block' : 'none';
+            document.getElementById('btnUseSlowMo').style.display = inventory.slowmo ? 'block' : 'none';
+        }
+
+        window.buyPowerUp = function(type) {
+            const cost = PRECOS[type];
+            if (coins >= cost) {
+                if (type === 'basket' && !inventory.basket && timerBasket === 0) {
+                    coins -= cost; inventory.basket = true; 
+                }
+                // O 2x não tem inventário/botão. Comprou, ativou na hora!
+                if (type === 'double' && !activeDouble) { 
+                    coins -= cost; activeDouble = true; 
+                }
+                if (type === 'slowmo' && !inventory.slowmo && timerSlowMo === 0) { 
+                    coins -= cost; inventory.slowmo = true; 
+                }
+                saveData(); updateUI();
+            }
+        };
+
+        // --- ATIVADORES DE HABILIDADE ---
+        window.useBasket = function() {
+            if (inventory.basket) {
+                basket.width = basketBaseWidth * 1.5; // Cesta aumenta 50%
+                timerBasket = 600; // 10 segundos
+                inventory.basket = false;
+                updateUI();
+            }
+        };
+
+        window.useSlowMo = function() {
+            if (inventory.slowmo) {
+                timerSlowMo = 300; // 5 segundos
+                inventory.slowmo = false;
+                updateUI();
+            }
+        };
+
+        // --- SISTEMA DE PAUSA E CONTAGEM ---
+        window.togglePause = function() {
+            if (!gameRunning) return;
+            if (isPaused) {
+                ui.style.display = 'none';
+                startCountdown(() => { isPaused = false; update(); });
+            } else {
+                isPaused = true;
+                ui.style.display = 'flex';
+                uiTitle.innerText = 'Loja / Pausa'; uiTitle.style.color = '#f39c12';
+                uiDesc.innerText = 'Compre itens para usar agora!';
+                startBtn.innerText = 'Voltar ao Jogo';
+                updateUI();
+            }
+        };
+
+        function startCountdown(callback) {
+            let count = 3;
+            const overlay = document.getElementById('countdownOverlay');
+            overlay.style.display = 'flex'; overlay.innerText = count;
+            let interval = setInterval(() => {
+                count--;
+                if (count > 0) { overlay.innerText = count; } 
+                else if (count === 0) { overlay.innerText = 'VAI!'; } 
+                else { clearInterval(interval); overlay.style.display = 'none'; callback(); }
+            }, 1000);
+        }
+
+        // --- SISTEMA VISUAL (PARTÍCULAS) ---
+        function spawnParticles(x, y) {
+            for(let i = 0; i < 12; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 8, // Velocidade horizontal aleatória
+                    vy: (Math.random() - 1) * 6,   // Velocidade vertical (sempre para cima)
+                    life: 1.0,                     // Tempo de vida
+                    color: Math.random() > 0.5 ? '#E74C3C' : '#F1C40F' // Vermelho ou Amarelo
+                });
+            }
+        }
+
+        // --- LOOP PRINCIPAL DO JOGO ---
+        function drawBasket() {
+            ctx.fillStyle = timerBasket > 0 ? '#F1C40F' : basket.color;
+            ctx.beginPath();
+            
+            // Aplica o efeito visual de Bounce alterando a altura dinamicamente
+            let currentHeight = basket.height + basketBounce;
+            let currentY = basket.y - (basketBounce / 2);
+            
+            ctx.roundRect(basket.x, currentY, basket.width, currentHeight, 10);
+            ctx.fill();
+        }
+
+        function drawApple(apple) {
+            // EFEITO DE TRAIL (Rastro da maçã)
+            ctx.fillStyle = 'rgba(231, 76, 60, 0.3)';
+            for (let j = 0; j < apple.history.length; j++) {
+                let pos = apple.history[j];
+                let trailRadius = apple.radius * (j / apple.history.length);
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, trailRadius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Maçã Real
+            ctx.fillStyle = '#E74C3C';
+            ctx.beginPath();
+            ctx.arc(apple.x, apple.y, apple.radius, 0, Math.PI * 2);
+            ctx.fill();
+            // Caule da maçã
+            ctx.fillStyle = '#27AE60';
+            ctx.fillRect(apple.x - 2, apple.y - apple.radius - 5, 4, 8);
+        }
+
+        function spawnApple() {
+            const radius = 15;
+            const x = Math.random() * (canvas.width - radius * 2) + radius;
+            apples.push({ x: x, y: -radius, radius: radius, history: [] }); // Array de history pro trail
+        }
+
+        function update() {
+            if (!gameRunning || isPaused) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#2ECC71';
+            ctx.fillRect(0, canvas.height - 30, canvas.width, 30);
+
+            // Temporizadores de Habilidades
+            if (timerBasket > 0) { timerBasket--; if (timerBasket === 0) { basket.width = basketBaseWidth; updateUI(); } }
+            
+            let currentSpeedMultiplier = 1.0;
+            if (timerSlowMo > 0) { timerSlowMo--; currentSpeedMultiplier = 0.4; if (timerSlowMo === 0) updateUI(); }
+
+            // Lógica do Bounce da Cesta (Desacelera com o tempo)
+            if (basketBounce > 0) { basketBounce *= 0.8; if (basketBounce < 0.5) basketBounce = 0; }
+            drawBasket();
+
+            // Lógica de Spawn de Maçãs
+            let currentSpawnRate = timerSlowMo > 0 ? appleSpawnRate * 2 : appleSpawnRate;
+            appleSpawnTimer++;
+            if (appleSpawnTimer > currentSpawnRate) { spawnApple(); appleSpawnTimer = 0; }
+
+            // Move e desenha as Maçãs
+            for (let i = 0; i < apples.length; i++) {
+                let a = apples[i];
+                a.y += (appleSpeed * currentSpeedMultiplier);
+                
+                // Grava a posição para o rastro (Trail)
+                a.history.push({x: a.x, y: a.y});
+                if (a.history.length > 6) a.history.shift(); // Apaga o rastro mais antigo
+
+                drawApple(a);
+
+                // Colisão
+                if (a.y + a.radius > basket.y && a.y - a.radius < basket.y + basket.height) {
+                    if (a.x + a.radius > basket.x && a.x - a.radius < basket.x + basket.width) {
+                        
+                        somColeta.currentTime = 0;
+                        somColeta.play().catch(()=>{});
+
+                        // EFEITOS VISUAIS: Bounce e Partículas!
+                        basketBounce = 15; 
+                        spawnParticles(a.x, basket.y);
+
+                        // PONTUAÇÃO (2X AFETA APENAS AS MOEDAS)
+                        let ganhoMoedas = activeDouble ? 2 : 1;
+                        score += 1; 
+                        coins += ganhoMoedas;
+                        
+                        updateUI();
+                        apples.splice(i, 1); i--;
+                        
+                        if (score % 10 === 0) {
+                            appleSpeed += 0.5;
+                            if (appleSpawnRate > 20) appleSpawnRate -= 5;
+                        }
+                        continue;
+                    }
+                }
+                if (a.y - a.radius > canvas.height) { gameOver(); }
+            }
+
+                        // Atualiza e desenha Partículas
+            for(let i = 0; i < particles.length; i++) {
+                let p = particles[i];
+                p.x += p.vx; p.y += p.vy;
+                p.vy += 0.3; // Gravidade puxando pra baixo
+                p.life -= 0.04; // Fica transparente com o tempo
+                if(p.life <= 0) { particles.splice(i, 1); i--; continue; }
+                
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life;
+                ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI*2); ctx.fill();
+            }
+            ctx.globalAlpha = 1.0; // Reseta transparência pro resto do jogo
+
+            animationId = requestAnimationFrame(update);
+        }
+
+        function gameOver() {
+            somGameOver.play().catch(()=>{});
+            gameRunning = false; isPaused = false; cancelAnimationFrame(animationId);
+            iniciarMusicaLobby();
+            if (score > highScore) { highScore = score; }
+            saveData();
+            
+            // Reseta Habilidades e Visuais para a próxima partida
+            inventory = { basket: false, double: false, slowmo: false };
+            activeDouble = false; timerBasket = 0; timerSlowMo = 0; basketBounce = 0; particles = [];
+            updateUI();
+
+            ui.style.display = 'flex';
+            uiTitle.innerText = 'Fim de Jogo!'; uiTitle.style.color = '#C0392B';
+            uiDesc.innerText = `Você colheu ${score} maçã(s).\nTotal de moedas: ${coins}`;
+            startBtn.innerText = 'Tentar Novamente';
+        }
+
+        function startGame() {
+            score = 0; appleSpeed = 5; appleSpawnRate = 60; apples = []; particles = [];
+            basket.x = canvas.width / 2 - basket.width / 2;
+            basket.width = basketBaseWidth; timerBasket = 0; timerSlowMo = 0;
+            
+            // Se comprou o 2x antes de dar Play, ele ativa direto
+            if (inventory.double) { activeDouble = true; inventory.double = false; }
+            else { activeDouble = false; }
+            
+            updateUI();
+            gameRunning = true; isPaused = false; ui.style.display = 'none';
+            iniciarMusicaJogo(); update();
+        }
+
+        startBtn.addEventListener('click', () => {
+            if (isPaused) togglePause();
+            else startGame();
+        });
+
+        function moveBasket(clientX) {
+            let novaPosicao = clientX - basket.width / 2;
+            if (novaPosicao < 0) novaPosicao = 0;
+            if (novaPosicao + basket.width > canvas.width) novaPosicao = canvas.width - basket.width;
+            basket.x = novaPosicao;
+        }
+
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); moveBasket(e.touches[0].clientX); }, { passive: false });
+        canvas.addEventListener('mousemove', (e) => { moveBasket(e.clientX); });
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            if(!gameRunning) { basket.x = canvas.width / 2 - basket.width / 2; basket.y = canvas.height - 60; }
+        });
+        updateUI();
+    </script>
+</body>
+</html>

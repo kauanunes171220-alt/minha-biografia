@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>2048 Ultimate</title>
+    <style>
+        :root {
+            --bg-color: #faf8ef;
+            --board-bg: #bbada0;
+            --cell-bg: #cdc1b4;
+            --text-color: #776e65;
+            --text-light: #f9f6f2;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Clear Sans', 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            touch-action: none; 
+            overflow: hidden;
+        }
+
+        .container {
+            width: 90vw;
+            max-width: 400px;
+            margin-top: 3vh;
+            position: relative;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        h1 { margin: 0; font-size: 2.2rem; color: #776e65; line-height: 1; }
+
+        .scores { display: flex; gap: 8px; }
+        .score-box {
+            background: var(--board-bg);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+            min-width: 50px;
+        }
+        .score-box span { font-size: 0.7rem; color: #eee4da; display: block; }
+
+        /* --- LOJA --- */
+        .shop {
+            background: var(--board-bg);
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+        .shop-header {
+            display: flex;
+            justify-content: space-between;
+            color: white;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+        .shop-buttons { display: flex; gap: 5px; }
+        .shop-btn {
+            background: #8f7a66;
+            color: white;
+            border: none;
+            padding: 8px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            flex: 1;
+            font-size: 0.75rem;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .shop-btn:disabled { background: #d3c4b5; cursor: not-allowed; opacity: 0.7; }
+        .shop-btn.active { 
+            background: #edc850; 
+            color: #776e65; 
+            box-shadow: 0 0 10px rgba(237, 200, 80, 0.8); 
+            transform: scale(1.05);
+        }
+        .shop-msg {
+            color: #eee4da;
+            text-align: center;
+            font-size: 0.8rem;
+            margin-top: 8px;
+            min-height: 1.2em;
+            font-weight: bold;
+        }
+
+        /* --- TABULEIRO FIX: Altura e Grid --- */
+        .game-board {
+            background: var(--board-bg);
+            padding: 10px;
+            border-radius: 10px;
+            position: relative;
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        .grid-bg {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr); /* FIX: Força a criação das linhas */
+            gap: 10px;
+            width: 100%;
+            aspect-ratio: 1 / 1; /* FIX: Passa o aspecto direto para o grid */
+        }
+
+        .grid-cell {
+            background: var(--cell-bg);
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
+        .tile-container {
+            position: absolute;
+            top: 10px; left: 10px; right: 10px; bottom: 10px;
+            pointer-events: none; /* Clicks passam pelos blocos direto para o grid */
+        }
+
+        /* Efeito Shake */
+        .shake { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-3px, 0, 0); }
+            40%, 60% { transform: translate3d(3px, 0, 0); }
+        }
+
+        /* --- BLOCOS DESLIZANTES --- */
+        .tile {
+            position: absolute;
+            width: calc((100% - 30px) / 4);
+            height: calc((100% - 30px) / 4);
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            font-weight: bold;
+            transition: top 0.15s ease-in-out, left 0.15s ease-in-out, background-color 0.2s, transform 0.1s;
+            z-index: 2;
+        }
+
+        .tile.small-text { font-size: 1.3rem; }
+        .tile.tiny-text { font-size: 1rem; }
+
+        .pop { animation: pop 0.2s ease-in-out; }
+        @keyframes pop {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        #particleCanvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .game-over {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(238, 228, 218, 0.85);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5rem;
+            font-weight: bold;
+            z-index: 20;
+            border-radius: 10px;
+            color: #776e65;
+        }
+        .btn-restart {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #8f7a66;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container" id="game-container">
+        <header class="header">
+            <h1>2048<br><span style="font-size: 1rem; color:#f67c5f;">ULTIMATE</span></h1>
+            <div class="scores">
+                <div class="score-box">
+                    <span>SCORE</span>
+                    <div id="score">0</div>
+                </div>
+                <div class="score-box">
+                    <span>BEST</span>
+                    <div id="best-score">0</div>
+                </div>
+            </div>
+        </header>
+
+        <div class="shop">
+            <div class="shop-header">
+                <span>LOJA ULTIMATE</span>
+                <span>Moedas: <span id="coins-display" style="color: #edc850;">300</span> 💰</span>
+            </div>
+            <div class="shop-buttons">
+                <button class="shop-btn" id="btn-delete" onclick="buyItem('delete')">Deletar (50)</button>
+                <button class="shop-btn" id="btn-merge" onclick="buyItem('merge')">Juntar (100)</button>
+                <button class="shop-btn" id="btn-bomb" onclick="buyItem('bomb')">Bomba (150)</button>
+            </div>
+            <div id="shop-msg" class="shop-msg">Compre um item para usar no tabuleiro!</div>
+        </div>
+
+        <div class="game-board" id="board">
+            <div class="grid-bg" id="grid-bg"></div>
+            <div class="tile-container" id="tile-container"></div>
+            <canvas id="particleCanvas"></canvas>
+            
+            <div class="game-over" id="gameOverMsg">
+                Fim de Jogo!
+                <button class="btn-restart" onclick="initGame()">Tentar Novamente</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const scoreEl = document.getElementById('score');
+        const bestScoreEl = document.getElementById('best-score');
+        const coinsEl = document.getElementById('coins-display');
+        const gameOverMsg = document.getElementById('gameOverMsg');
+        const containerEl = document.getElementById('game-container');
+        const gridBg = document.getElementById('grid-bg');
+        const tileContainer = document.getElementById('tile-container');
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+        const shopMsg = document.getElementById('shop-msg');
+
+        let board = [];
+        let tiles = []; 
+        let tileIdCounter = 0;
+        
+        let score = 0;
+        let coins = 300; 
+        let bestScore = localStorage.getItem('2048-ultimate-best') || 0;
+        let particles = [];
+        
+        let shopState = 'PLAY'; 
+        let mergeFirstTile = null;
+
+        const PRICES = { delete: 50, merge: 100, bomb: 150 };
+
+        bestScoreEl.innerText = bestScore;
+
+        // --- SISTEMA DE PARTÍCULAS E CANVAS ---
+        function resizeCanvas() {
+            if(canvas) {
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+            }
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y;
+                this.vx = (Math.random() - 0.5) * 12;
+                this.vy = (Math.random() - 0.5) * 12;
+                this.life = 1.0;
+                this.color = color;
+                this.size = Math.random() * 6 + 3;
+            }
+            update() {
+                this.x += this.vx; this.y += this.vy;
+                this.life -= 0.04;
+            }
+            draw() {
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function spawnParticles(col, row, customColor = null) {
+            const cellWidth = canvas.width / 4;
+            const cellHeight = canvas.height / 4;
+            const x = (col * cellWidth) + (cellWidth / 2);
+            const y = (row * cellHeight) + (cellHeight / 2);
+            const colors = customColor ? [customColor] : ['#f2b179', '#f59563', '#edc850', '#edcc61'];
+            
+            for(let i=0; i<20; i++) {
+                particles.push(new Particle(x, y, colors[Math.floor(Math.random() * colors.length)]));
+            }
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach((p, index) => {
+                p.update(); p.draw();
+                if(p.life <= 0) particles.splice(index, 1);
+            });
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        function getTileStyle(val) {
+            const styles = {
+                2: { bg: '#eee4da', color: '#776e65' },
+                4: { bg: '#ede0c8', color: '#776e65' },
+                8: { bg: '#f2b179', color: '#f9f6f2' },
+                16: { bg: '#f59563', color: '#f9f6f2' },
+                32: { bg: '#f67c5f', color: '#f9f6f2' },
+                64: { bg: '#f65e3b', color: '#f9f6f2' },
+                128: { bg: '#edcf72', color: '#f9f6f2', shadow: '0 0 10px rgba(243, 215, 116, 0.5)' },
+                256: { bg: '#edcc61', color: '#f9f6f2', shadow: '0 0 20px rgba(243, 215, 116, 0.6)' },
+                512: { bg: '#edc850', color: '#f9f6f2', shadow: '0 0 30px rgba(243, 215, 116, 0.8)' },
+                1024: { bg: '#edc53f', color: '#f9f6f2', shadow: '0 0 40px rgba(243, 215, 116, 0.9)' },
+                2048: { bg: '#edc22e', color: '#f9f6f2', shadow: '0 0 50px rgba(243, 215, 116, 1)' }
+            };
+            return styles[val] || { bg: '#3c3a32', color: '#f9f6f2', shadow: '0 0 20px #ff0000' };
+        }
+
+        function initGame() {
+            board = Array(4).fill().map(() => Array(4).fill(null));
+            tileContainer.innerHTML = '';
+            gridBg.innerHTML = '';
+            tiles = [];
+            score = 0;
+            coins = 300; 
+            shopState = 'PLAY';
+            mergeFirstTile = null;
+
+            updateScore();
+            updateShopUI();
+            gameOverMsg.style.display = 'none';
+            shopMsg.innerText = 'Deslize para jogar!';
+            particles = [];
+
+            for(let r=0; r<4; r++) {
+                for(let c=0; c<4; c++) {
+                    let cell = document.createElement('div');
+                    cell.className = 'grid-cell';
+                    cell.onclick = () => handleCellClick(r, c);
+                    gridBg.appendChild(cell);
+                }
+            }
+
+            setTimeout(() => {
+                resizeCanvas();
+                addRandomTile();
+                addRandomTile();
+            }, 50);
+        }
+
+        function addRandomTile() {
+            let emptyCells = [];
+            for(let r=0; r<4; r++) {
+                for(let c=0; c<4; c++) {
+                    if(!board[r][c]) emptyCells.push({r, c});
+                }
+            }
+            if(emptyCells.length > 0) {
+                let {r, c} = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                let val = Math.random() < 0.9 ? 2 : 4;
+                createTile(r, c, val);
+            }
+        }
+
+        function createTile(r, c, val) {
+            let tile = { id: tileIdCounter++, r, c, val, el: document.createElement('div') };
+            board[r][c] = tile;
+            tiles.push(tile);
+            
+            tile.el.className = 'tile pop';
+            updateTileDOM(tile);
+            tileContainer.appendChild(tile.el);
+        }
+
+        function updateTileDOM(tile) {
+            // FIX: Removido o var() css e injetado o cálculo diretamente por JS!
+            tile.el.style.top = `calc(${tile.r} * ((100% - 30px) / 4 + 10px))`;
+            tile.el.style.left = `calc(${tile.c} * ((100% - 30px) / 4 + 10px))`;
+            
+            tile.el.innerText = tile.val;
+            let style = getTileStyle(tile.val);
+            tile.el.style.backgroundColor = style.bg;
+            tile.el.style.color = style.color;
+            tile.el.style.boxShadow = style.shadow || 'none';
+
+            tile.el.classList.remove('small-text', 'tiny-text');
+            if(tile.val >= 1024) tile.el.classList.add('small-text');
+            if(tile.val >= 16384) tile.el.classList.add('tiny-text');
+        }
+
+        function removeTile(tile) {
+            board[tile.r][tile.c] = null;
+            tile.el.remove();
+            tiles = tiles.filter(t => t !== tile);
+        }
+
+        function move(direction) {
+            if(shopState !== 'PLAY') return;
+
+            const vector = { 'Left': [0, -1], 'Right': [0, 1], 'Up': [-1, 0], 'Down': [1, 0] }[direction];
+            let moved = false;
+            let mergedThisTurn = [];
+
+            let traversals = { x: [0,1,2,3], y: [0,1,2,3] };
+            if (vector[0] === 1) traversals.y.reverse();
+            if (vector[1] === 1) traversals.x.reverse();
+
+            traversals.x.forEach(c => {
+                traversals.y.forEach(r => {
+                    let tile = board[r][c];
+                    if (tile) {
+                        let prevR = r, prevC = c;
+                        let nextR = r + vector[0], nextC = c + vector[1];
+
+                        while (nextR >= 0 && nextR < 4 && nextC >= 0 && nextC < 4 && !board[nextR][nextC]) {
+                            prevR = nextR; prevC = nextC;
+                            nextR += vector[0]; nextC += vector[1];
+                        }
+
+                        let nextTile = (nextR >= 0 && nextR < 4 && nextC >= 0 && nextC < 4) ? board[nextR][nextC] : null;
+
+                        if (nextTile && nextTile.val === tile.val && !mergedThisTurn.includes(nextTile)) {
+                            nextTile.val *= 2;
+                            score += nextTile.val;
+                            coins += Math.max(1, Math.floor(nextTile.val / 16));
+                            
+                            board[r][c] = null;
+                            tile.r = nextR; tile.c = nextC;
+                            updateTileDOM(tile);
+                            
+                            setTimeout(() => { tile.el.remove(); }, 150);
+                            tiles = tiles.filter(t => t !== tile);
+                            
+                            updateTileDOM(nextTile);
+                            mergedThisTurn.push(nextTile);
+                            moved = true;
+                            
+                            spawnParticles(nextC, nextR);
+                            if(nextTile.val >= 32) triggerShake();
+                        } else if (prevR !== r || prevC !== c) {
+                            board[r][c] = null;
+                            board[prevR][prevC] = tile;
+                            tile.r = prevR; tile.c = prevC;
+                            updateTileDOM(tile);
+                            moved = true;
+                        }
+                    }
+                });
+            });
+
+            if(moved) {
+                setTimeout(() => {
+                    mergedThisTurn.forEach(t => {
+                        t.el.classList.remove('pop'); 
+                        void t.el.offsetWidth; 
+                        t.el.classList.add('pop');
+                    });
+                }, 150);
+
+                setTimeout(() => {
+                    addRandomTile();
+                    updateScore();
+                    checkGameOver();
+                }, 160);
+            }
+        }
+
+        // --- LOJA ---
+        function updateShopUI() {
+            coinsEl.innerText = coins;
+            document.getElementById('btn-delete').disabled = coins < PRICES.delete;
+            document.getElementById('btn-merge').disabled = coins < PRICES.merge;
+            document.getElementById('btn-bomb').disabled = coins < PRICES.bomb;
+
+            document.querySelectorAll('.shop-btn').forEach(b => b.classList.remove('active'));
+            if(shopState === 'DELETE') document.getElementById('btn-delete').classList.add('active');
+            if(shopState.startsWith('MERGE')) document.getElementById('btn-merge').classList.add('active');
+            if(shopState === 'BOMB') document.getElementById('btn-bomb').classList.add('active');
+        }
+
+        function buyItem(item) {
+            if(shopState !== 'PLAY') { endShopAction(); return; }
+            if(item === 'delete' && coins >= PRICES.delete) {
+                shopState = 'DELETE'; shopMsg.innerText = 'Toque em um bloco para DELETÁ-LO.';
+            } else if(item === 'bomb' && coins >= PRICES.bomb) {
+                shopState = 'BOMB'; shopMsg.innerText = 'Toque no tabuleiro para EXPLODIR uma área 3x3.';
+            } else if(item === 'merge' && coins >= PRICES.merge) {
+                shopState = 'MERGE_1'; shopMsg.innerText = 'Selecione o PRIMEIRO bloco para juntar.';
+            }
+            updateShopUI();
+        }
+
+        function handleCellClick(r, c) {
+            if(shopState === 'PLAY') return;
+
+            let tile = board[r][c];
+
+            if(shopState === 'DELETE') {
+                if(!tile) return;
+                spawnParticles(c, r, '#eee4da');
+                removeTile(tile);
+                coins -= PRICES.delete;
+                endShopAction('Bloco deletado!');
+            }
+            else if(shopState === 'BOMB') {
+                let destroyed = false;
+                for(let ir = r-1; ir <= r+1; ir++) {
+                    for(let ic = c-1; ic <= c+1; ic++) {
+                        if(ir>=0 && ir<4 && ic>=0 && ic<4 && board[ir][ic]) {
+                            spawnParticles(ic, ir, '#f65e3b');
+                            removeTile(board[ir][ic]);
+                            destroyed = true;
+                        }
+                    }
+                }
+                if(destroyed) {
+                    triggerShake();
+                    coins -= PRICES.bomb;
+                    endShopAction('KABOOM!');
+                }
+            }
+            else if(shopState === 'MERGE_1') {
+                if(!tile) return;
+                mergeFirstTile = tile;
+                tile.el.style.transform = `scale(1.15)`;
+                tile.el.style.zIndex = '5';
+                shopState = 'MERGE_2';
+                shopMsg.innerText = 'Selecione o SEGUNDO bloco para juntar.';
+                updateShopUI();
+            }
+            else if(shopState === 'MERGE_2') {
+                if(!tile) return;
+                if(tile === mergeFirstTile) { endShopAction('Ação cancelada.'); return; }
+                
+                tile.val += mergeFirstTile.val;
+                score += tile.val;
+                
+                removeTile(mergeFirstTile);
+                updateTileDOM(tile);
+                spawnParticles(c, r, '#edc850');
+                
+                tile.el.classList.remove('pop'); void tile.el.offsetWidth; tile.el.classList.add('pop');
+                
+                coins -= PRICES.merge;
+                endShopAction('Blocos fundidos!');
+            }
+        }
+
+        function endShopAction(msg = '') {
+            if(mergeFirstTile && mergeFirstTile.el) {
+                mergeFirstTile.el.style.transform = '';
+                mergeFirstTile.el.style.zIndex = '2';
+            }
+            shopState = 'PLAY'; mergeFirstTile = null;
+            shopMsg.innerText = msg || 'Deslize para jogar!';
+            
+            if(tiles.length === 0) { addRandomTile(); addRandomTile(); }
+            
+            updateShopUI(); updateScore(); checkGameOver();
+        }
+
+        function updateScore() {
+            scoreEl.innerText = score;
+            if(score > bestScore) {
+                bestScore = score;
+                bestScoreEl.innerText = bestScore;
+                localStorage.setItem('2048-ultimate-best', bestScore);
+            }
+            updateShopUI();
+        }
+
+        function triggerShake() {
+            containerEl.classList.remove('shake');
+            void containerEl.offsetWidth;
+            containerEl.classList.add('shake');
+        }
+
+        function checkGameOver() {
+            let isFull = true;
+            let canMerge = false;
+            for(let r=0; r<4; r++) {
+                for(let c=0; c<4; c++) {
+                    if(!board[r][c]) { isFull = false; break; }
+                    if(r<3 && board[r][c] && board[r+1][c] && board[r][c].val === board[r+1][c].val) canMerge = true;
+                    if(c<3 && board[r][c] && board[r][c+1] && board[r][c].val === board[r][c+1].val) canMerge = true;
+                }
+            }
+            if(isFull && !canMerge) {
+                if(coins >= Math.min(PRICES.delete, PRICES.merge, PRICES.bomb)) {
+                    shopMsg.innerText = 'SEM MOVIMENTOS! Compre um item para se salvar!';
+                    shopMsg.style.color = '#f65e3b'; return;
+                }
+                gameOverMsg.style.display = 'flex';
+            }
+        }
+
+        // Controles de teclado
+        document.addEventListener('keydown', e => {
+            if(['ArrowLeft', 'a', 'A'].includes(e.key)) move('Left');
+            if(['ArrowRight', 'd', 'D'].includes(e.key)) move('Right');
+            if(['ArrowUp', 'w', 'W'].includes(e.key)) move('Up');
+            if(['ArrowDown', 's', 'S'].includes(e.key)) move('Down');
+        });
+
+        // Controles Mobile
+        let touchStartX = 0, touchStartY = 0;
+        gridBg.addEventListener('touchstart', e => {
+            if(shopState !== 'PLAY') return;
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+            e.preventDefault();
+        }, {passive: false});
+
+        gridBg.addEventListener('touchend', e => {
+            if(shopState !== 'PLAY') return;
+            let dx = e.changedTouches[0].screenX - touchStartX;
+            let dy = e.changedTouches[0].screenY - touchStartY;
+
+            if(Math.abs(dx) > 30 || Math.abs(dy) > 30) {
+                if(Math.abs(dx) > Math.abs(dy)) {
+                    if(dx > 0) move('Right'); else move('Left');
+                } else {
+                    if(dy > 0) move('Down'); else move('Up');
+                }
+            }
+        });
+
+        initGame();
+    </script>
+</body>
+</html>
